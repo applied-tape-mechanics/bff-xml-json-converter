@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BFF: XML ↔ JSON Converter</title>
+  
+  <!-- Shared Applied Tape Mechanics Design System (Loaded at runtime from GitHub Release via jsDelivr CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/applied-tape-mechanics/bff-ui@v1.0.0/css/bff-theme.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-bar">
+        <span class="pulse-dot"></span>
+        <span>Dual Brainfuck Engines (xml_to_json & json_to_xml)</span>
+      </div>
+      <h1>XML ↔ JSON Bidirectional Converter</h1>
+      <p class="subtitle">Real-time structured conversion powered entirely by pure Brainfuck state machines</p>
+    </header>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabXml2Json" onclick="setMode('xml2json')">XML → JSON</button>
+      <button class="mode-tab" id="tabJson2Xml" onclick="setMode('json2xml')">JSON → XML</button>
+      <button class="mode-tab" onclick="swapContent()" title="Swap input and output">⇄ Swap & Reverse</button>
+      <button class="mode-tab mode-tab-accent" onclick="openBfInspector()">🧠 View Brainfuck Code</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="inputTitle">XML Input</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);" id="inputFormatBadge">Format: XML</span>
+        </div>
+        <div class="presets" id="presetsContainer"></div>
+        <textarea id="inputText" placeholder="Enter input here..."></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="convert()">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/></svg>
+            Convert with Brainfuck
+          </button>
+          <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="outputTitle">JSON Output</div>
+          <button class="preset-btn" onclick="BffUI.copyText(document.getElementById('outputText').innerText)">Copy Output</button>
+        </div>
+        <pre class="output-view" id="outputText">/* Output will appear here */</pre>
+        <div class="stats-bar">
+          <div class="stat-pill">Elements/Keys: <span id="statElements">0</span></div>
+          <div class="stat-pill">Characters: <span id="statChars">0</span></div>
+          <div class="stat-pill">Status: <span id="statStatus" style="color:var(--text-muted);">Idle</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brainfuck Code Viewer Modal -->
+  <div class="modal-backdrop" id="bfModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🧠 Brainfuck Source Code & State Machine Inspector</span>
+        </div>
+        <button class="close-btn" onclick="BffUI.closeModal('bfModal')" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-subtabs">
+          <button class="modal-tab active" data-view="xml_to_json" onclick="BffUI.setBfView('xml_to_json')">xml_to_json.bf</button>
+          <button class="modal-tab" data-view="json_to_xml" onclick="BffUI.setBfView('json_to_xml')">json_to_xml.bf</button>
+          <button class="modal-tab" data-view="tape" onclick="BffUI.setBfView('tape')">Tape Memory Layout</button>
+        </div>
+
+        <div id="bfCodeSection">
+          <div class="modal-actions" style="margin-bottom: 0.75rem;">
+            <div class="op-stat-group" id="bfOpStats"></div>
+            <div class="modal-actions-left">
+              <button class="preset-btn" onclick="BffUI.toggleWrap()" id="wrapToggleBtn">Unwrap Lines</button>
+              <button class="preset-btn" onclick="BffUI.copyBfCode()">Copy Code</button>
+              <button class="preset-btn" onclick="BffUI.downloadBfFile()">Download .bf</button>
+            </div>
+          </div>
+          <pre class="bf-code-box" id="bfCodeDisplay">Loading Brainfuck code...</pre>
+        </div>
+
+        <div id="bfTapeSection" style="display:none;">
+          <h4 style="color:#a5b4fc; margin-bottom: 0.5rem;">XML → JSON Tape Memory Allocation (<code>xml_to_json.bf</code>)</h4>
+          <table class="tape-table">
+            <thead>
+              <tr><th>Cell</th><th>Identifier</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>c0</code></td><td>char</td><td>Current input byte read from stdin</td></tr>
+              <tr><td><code>c1</code></td><td>in_tag_name</td><td>Flag: 1 if inside opening tag name, 0 otherwise</td></tr>
+              <tr><td><code>c2</code></td><td>in_text</td><td>Flag: 1 if emitting inner element text content</td></tr>
+              <tr><td><code>c3</code></td><td>in_closing_tag</td><td>Flag: 1 if skipping closing tag name</td></tr>
+              <tr><td><code>c4</code></td><td>saw_lt</td><td>Flag: previous byte was <code>&lt;</code></td></tr>
+              <tr><td><code>c5</code></td><td>expect_value</td><td>Flag: element opened, expecting child tag or text</td></tr>
+              <tr><td><code>c6</code></td><td>need_comma</td><td>Flag: emit <code>,</code> delimiter before next property</td></tr>
+              <tr><td><code>c8..c11</code></td><td>delim_flags</td><td>Equalities for <code>&lt;</code> (60), <code>&gt;</code> (62), <code>/</code> (47), whitespace (32)</td></tr>
+              <tr><td><code>c12..c23</code></td><td>scratch</td><td>Level-isolated scratch cells for deterministic branches</td></tr>
+              <tr><td><code>c30</code></td><td>print_cell</td><td>Dedicated emission cell</td></tr>
+            </tbody>
+          </table>
+
+          <h4 style="color:#a5b4fc; margin-top: 1.25rem; margin-bottom: 0.5rem;">JSON → XML Tape Memory Allocation (<code>json_to_xml.bf</code>)</h4>
+          <table class="tape-table">
+            <thead>
+              <tr><th>Cell</th><th>Identifier</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>c0</code></td><td>char</td><td>Current input byte read from stdin</td></tr>
+              <tr><td><code>c1</code></td><td>in_key</td><td>Flag: accumulating key name into buffer</td></tr>
+              <tr><td><code>c2</code></td><td>after_key</td><td>Flag: key ended, awaiting colon and value</td></tr>
+              <tr><td><code>c3</code></td><td>in_val</td><td>Flag: streaming string value directly to stdout</td></tr>
+              <tr><td><code>c4</code></td><td>stack_depth</td><td>Current object hierarchy nesting level (0, 1, 2)</td></tr>
+              <tr><td><code>c5</code></td><td>key_ptr</td><td>Pointer offset in active key buffer</td></tr>
+              <tr><td><code>c8..c11</code></td><td>delim_flags</td><td>Equalities for <code>"</code> (34), <code>:</code> (58), <code>{</code> (123), <code>}</code> (125)</td></tr>
+              <tr><td><code>c50..c65</code></td><td>key_buffer</td><td>Active element tag name buffer (up to 15 chars)</td></tr>
+              <tr><td><code>c80..c95</code></td><td>stack_lvl_0</td><td>Call stack frame 0 parent tag name</td></tr>
+              <tr><td><code>c100..c115</code></td><td>stack_lvl_1</td><td>Call stack frame 1 parent tag name</td></tr>
+              <tr><td><code>c120..c135</code></td><td>stack_lvl_2</td><td>Call stack frame 2 parent tag name</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared Applied Tape Mechanics Runtime & UI Kit (Loaded at runtime from GitHub Release via jsDelivr CDN) -->
+  <script src="https://cdn.jsdelivr.net/gh/applied-tape-mechanics/bff-interpreter@v1.0.0/bff-interpreter.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/applied-tape-mechanics/bff-ui@v1.0.0/js/bff-ui.js"></script>
+
+  <script>
+    const BF_XML2JSON = __BF_XML2JSON__;
+    const BF_JSON2XML = __BF_JSON2XML__;
+    let currentMode = 'xml2json';
+    let lastRawOutput = '';
+
+    const xmlPresets = [
+      { name: "Simple Note", data: "<note><to>Tove</to><from>Jani</from></note>" },
+      { name: "User Profile", data: "<user><name>Alice</name><age>30</age><city>Helsinki</city></user>" },
+      { name: "Nested Catalog", data: "<root><item><id>1</id><title>Hello</title></item></root>" },
+      { name: "Person", data: "<person><name>Bob</name></person>" }
+    ];
+
+    const jsonPresets = [
+      { name: "Simple Note", data: '{"note":{"to":"Tove","from":"Jani"}}' },
+      { name: "User Profile", data: '{"user":{"name":"Alice","age":"30","city":"Helsinki"}}' },
+      { name: "Person Data", data: '{"person":{"name":"Bob"}}' }
+    ];
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('tabXml2Json').className = mode === 'xml2json' ? 'mode-tab active' : 'mode-tab';
+      document.getElementById('tabJson2Xml').className = mode === 'json2xml' ? 'mode-tab active' : 'mode-tab';
+
+      if (mode === 'xml2json') {
+        document.getElementById('inputTitle').innerText = 'XML Input';
+        document.getElementById('outputTitle').innerText = 'JSON Output';
+        document.getElementById('inputFormatBadge').innerText = 'Format: XML';
+      } else {
+        document.getElementById('inputTitle').innerText = 'JSON Input';
+        document.getElementById('outputTitle').innerText = 'XML Output';
+        document.getElementById('inputFormatBadge').innerText = 'Format: JSON';
+      }
+      renderPresets();
+      loadPreset(0);
+    }
+
+    function renderPresets() {
+      const container = document.getElementById('presetsContainer');
+      container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted); align-self:center;">Presets:</span>';
+      const presets = currentMode === 'xml2json' ? xmlPresets : jsonPresets;
+      presets.forEach((p, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.innerText = p.name;
+        btn.onclick = () => loadPreset(idx);
+        container.appendChild(btn);
+      });
+    }
+
+    function loadPreset(idx) {
+      const presets = currentMode === 'xml2json' ? xmlPresets : jsonPresets;
+      if (presets[idx]) {
+        document.getElementById('inputText').value = presets[idx].data;
+        convert();
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('inputText').value = '';
+      document.getElementById('outputText').innerText = '/* Output will appear here */';
+      document.getElementById('statElements').innerText = '0';
+      document.getElementById('statChars').innerText = '0';
+      document.getElementById('statStatus').innerText = 'Idle';
+      document.getElementById('statStatus').style.color = 'var(--text-muted)';
+      lastRawOutput = '';
+    }
+
+    function swapContent() {
+      if (!lastRawOutput) return;
+      const newMode = currentMode === 'xml2json' ? 'json2xml' : 'xml2json';
+      const prevOutput = lastRawOutput;
+      setMode(newMode);
+      document.getElementById('inputText').value = prevOutput;
+      convert();
+    }
+
+    function countKeys(obj) {
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        let count = Object.keys(obj).length;
+        for (const val of Object.values(obj)) {
+          count += countKeys(val);
+        }
+        return count;
+      }
+      return 0;
+    }
+
+    async function convert() {
+      const input = document.getElementById('inputText').value.trim();
+      if (!input) { clearAll(); return; }
+
+      const statusEl = document.getElementById('statStatus');
+      statusEl.innerText = 'Converting (Brainfuck)...';
+      statusEl.style.color = '#38bdf8';
+
+      const endpoint = currentMode === 'xml2json' ? '/convert/xml-to-json' : '/convert/json-to-xml';
+
+      // If backend API is detected, try Fastify endpoint
+      if (window.BffUI && BffUI.api && BffUI.api.detected) {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: input
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Conversion failed');
+          }
+
+          const data = await response.json();
+          let displayOutput = '';
+          if (currentMode === 'xml2json') {
+            displayOutput = JSON.stringify(data.result, null, 2);
+            lastRawOutput = JSON.stringify(data.result);
+          } else {
+            displayOutput = data.result;
+            lastRawOutput = data.result;
+          }
+
+          document.getElementById('outputText').innerText = displayOutput;
+          document.getElementById('statElements').innerText = data.element_count || 0;
+          document.getElementById('statChars').innerText = data.character_count || input.length;
+          statusEl.innerText = 'Success (API)';
+          statusEl.style.color = 'var(--success)';
+          return;
+        } catch (err) {
+          console.warn('Backend API request failed, executing via client JS VM:', err);
+        }
+      }
+
+      // Standalone client-side Brainfuck execution (pure JS VM)
+      try {
+        let vmInput = input;
+        if (currentMode === 'json2xml') {
+          try {
+            vmInput = JSON.stringify(JSON.parse(input));
+          } catch (e) {
+            vmInput = input;
+          }
+        }
+        const bfCode = currentMode === 'xml2json' ? BF_XML2JSON : BF_JSON2XML;
+        const rawOutput = BffUI.runBrainfuck(bfCode, vmInput);
+        let displayOutput = rawOutput;
+        let elemCount = 0;
+
+        if (currentMode === 'xml2json') {
+          try {
+            const parsed = JSON.parse(rawOutput);
+            displayOutput = JSON.stringify(parsed, null, 2);
+            elemCount = countKeys(parsed);
+          } catch (e) {
+            displayOutput = rawOutput;
+          }
+        } else {
+          const openTags = (rawOutput.match(/<[a-zA-Z0-9_-]+/g) || []).length;
+          const closeTags = (rawOutput.match(/<\/[a-zA-Z0-9_-]+/g) || []).length;
+          elemCount = Math.max(Math.max(0, openTags - closeTags), Math.floor(openTags / 2));
+        }
+
+        lastRawOutput = rawOutput;
+        document.getElementById('outputText').innerText = displayOutput;
+        document.getElementById('statElements').innerText = elemCount;
+        document.getElementById('statChars').innerText = vmInput.length;
+        statusEl.innerText = 'Success (Client JS VM)';
+        statusEl.style.color = 'var(--success)';
+      } catch (err) {
+        document.getElementById('outputText').innerText = 'Error: ' + err.message;
+        statusEl.innerText = 'Failed';
+        statusEl.style.color = '#f87171';
+      }
+    }
+
+    function computeOpCounts(code) {
+      const counts = {};
+      for (const op of ['>', '<', '+', '-', '.', ',', '[', ']']) {
+        counts[op] = code.split(op).length - 1;
+      }
+      return counts;
+    }
+
+    function openBfInspector() {
+      if (window.BffUI && (!BffUI.api || !BffUI.api.detected) && !BffUI._bfState.data) {
+        BffUI._bfState.data = {
+          xml_to_json: {
+            name: 'xml_to_json.bf',
+            description: 'Streaming delimiter state machine converting XML elements to JSON object structures',
+            length: BF_XML2JSON.length,
+            op_counts: computeOpCounts(BF_XML2JSON),
+            code: BF_XML2JSON
+          },
+          json_to_xml: {
+            name: 'json_to_xml.bf',
+            description: 'Stack-depth tracking state machine converting JSON objects to XML element tags',
+            length: BF_JSON2XML.length,
+            op_counts: computeOpCounts(BF_JSON2XML),
+            code: BF_JSON2XML
+          }
+        };
+      }
+      BffUI.initBfInspector({
+        modalId: 'bfModal',
+        endpoint: '/bf',
+        defaultView: currentMode === 'json2xml' ? 'json_to_xml' : 'xml_to_json'
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setMode('xml2json');
+    });
+  </script>
+</body>
+</html>
