@@ -3,7 +3,7 @@
 > **[Applied Tape Mechanics](https://github.com/applied-tape-mechanics)** — *Empirical computation and discrete field dynamics on minimal linear substrates.*
 > *Enterprise-grade cloud microservices—except the core business logic is pure Brainfuck. Best Friends Forever (`BFF`) with the most hostile programming language ever created.*
 
-A bidirectional **XML-to-JSON** and **JSON-to-XML** enterprise data transformation service where all parsing, call-stack tracking, and serialization state machines are executed in **pure Brainfuck** ([`bf/xml_to_json.bf`](bf/xml_to_json.bf) and [`bf/json_to_xml.bf`](bf/json_to_xml.bf)), served by a TypeScript [Fastify](https://fastify.dev) REST API with OpenAPI/Swagger documentation, an interactive Web UI, and Docker containerization.
+A bidirectional **XML-to-JSON** and **JSON-to-XML** enterprise data transformation service where all parsing, call-stack tracking, and serialization state machines are executed in **pure Brainfuck** ([`bf/xml_to_json.bf`](bf/xml_to_json.bf) and [`bf/json_to_xml.bf`](bf/json_to_xml.bf)). Try the **[Live Interactive Demo on GitHub Pages](https://applied-tape-mechanics.github.io/bff-xml-json-converter/)** (running 100% client-side in your browser via the JavaScript Brainfuck VM), or run the full TypeScript [Fastify](https://fastify.dev) microservice locally/in Docker for the REST API and interactive OpenAPI/Swagger documentation (`/docs`).
 
 ---
 
